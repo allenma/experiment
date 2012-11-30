@@ -1,0 +1,54 @@
+#!/bin/bash
+NEO4J_HOME=
+
+JAVA_OPTS="$JAVA_OPTS -Xms512m"
+JAVA_OPTS="$JAVA_OPTS -Xmx512m"
+
+buildclasspath() {
+  # confirm library jars
+  LIBDIR="$NEO4J_HOME"/lib
+  if [ ! -e "$LIBDIR" ] ; then
+    echo "Error: missing Neo4j Library, expected at $LIBDIR"
+    exit 1
+  fi
+
+  # confirm system jars
+  SYSLIBDIR="$NEO4J_HOME"/system/lib
+  if [ ! -e "$SYSLIBDIR" ] ; then
+    echo "Error: missing Neo4j System Library, expected at $SYSLIBDIR"
+    exit 1
+  fi
+
+  ALL_JARS=""
+  for jar in "$LIBDIR"/*.jar "$SYSLIBDIR"/*.jar ; do
+    [ -z "$ALL_JARS" ] && ALL_JARS="$jar" || ALL_JARS="$ALL_JARS":"$jar"
+  done
+
+  # add any plugin jars
+  for jar in "$NEO4J_HOME"/plugins/*.jar ; do
+    if [ -e "$jar" ] ; then
+      ALL_JARS="$ALL_JARS":"$jar"
+    fi
+  done
+
+  # add any plugin jars in nested folders
+  for jar in "$NEO4J_HOME"/plugins/**/*.jar ; do
+    if [ -e "$jar" ] ; then
+      ALL_JARS="$ALL_JARS":"$jar"
+    fi
+  done
+
+  if [ -e "$NEO4J_HOME"/system/coordinator/lib ]; then
+    for jar in "$NEO4J_HOME"/system/coordinator/lib/*.jar ; do
+      if [ -e "$jar" ] ; then
+        ALL_JARS="$ALL_JARS":"$jar"
+      fi
+    done
+  fi
+
+  CLASSPATH=${ALL_JARS}
+  CLASSPATH=${CLASSPATH}:"neo4jexperiment-0.1-SNAPSHOT.jar"
+}
+JAVACMD=java
+buildclasspath
+$JAVACMD -cp "${CLASSPATH}" $JAVA_OPTS com.paypal.risk.ganma.experiment.neo4j.graphgen.DummyGraphGenerator2 $*
